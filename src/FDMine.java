@@ -1,4 +1,10 @@
 
+import com.sun.org.apache.bcel.internal.generic.RETURN;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -7,55 +13,74 @@ import java.util.*;
 public class FDMine
 {
 
+	//存储数据
 	private String[][] relation;
-	//private HashMap<Character,List<String>> relation;
+	//存储列名（根据数字相对位置生成的字母，方便组合）
 	private char[] U;
-	//private List<String[]> F;
+	//保存函数依赖的list
+	private List<String[]> F;
+	//保存等价类的list
+	private Set<String> E;
+	//保存closure的map
+	private HashMap<String,Set<Character>> FClosure;
+	//算法是否修剪
+	private boolean prune;
 
 
 	public FDMine(String[][] relation, char[] u)
 	{
 		this.relation = relation;
 		U = u;
+		F= new ArrayList<>();
+		E = new HashSet<>();
+		FClosure = new HashMap<>();
+		prune=true;
 	}
 
 	public FDMine()
 	{
+		F= new ArrayList<>();
+		E = new HashSet<>();
+		prune=true;
 	}
 
+	//算法运行的主体部分
 	public void runAlgorithm()
 	{
-		List<String[]> F = new ArrayList<>();
-		List<String[]> E = new ArrayList<>();
-		List<Object[]> Ck ;
-		List<Object[]> Ckm = new ArrayList<>();
-		int k = 1;
+
+		//为简化操作并减少内存开销，每次维护两个level的计算
+		//Ckm为ck的上一层
+		HashMap<String,Object[]> Ck ;
+		HashMap<String,Object[]> Ckm = new HashMap<>();
 
 		for (char c :U)
 		{
-			Object[] objects = new Object[3];
+			Object[] objects = new Object[2];
 			String ch = String.valueOf(c);
 
-			objects[0] = ch;
-			objects[1] = InitializeClosure(ch);
-			objects[2] = InitializePartition(c);
-			Ckm.add(objects);
+			objects[0] = InitializeClosure(ch);
+			objects[1] = InitializePartition(c);
+			Ckm.put(ch,objects);
 		}
 
-		while (k <= U.length)
+		while (Ckm.size()>0)
 		{
 			Ck = GenerateNextLevel(Ckm);
-
-
+			ObtainFDs(Ck,Ckm);
+			ObtainEquivalences(Ckm);
+			//根据需要是否修剪
+			if (prune)
+			{
+				Ck = Prune(Ck,Ckm);
+			}
 
 			Ckm = Ck;
-			k++;
 		}
 
 
 	}
 
-	//单一属性的时候的partition
+	//单一属性的时候的partition，为初始状态的partition策略
 	public List<List<Integer>> InitializePartition(char ch)
 	{
 		List<List<Integer>> partition = new ArrayList<>();
@@ -86,45 +111,112 @@ public class FDMine
 	}
 
 
-	//从上一层中指定的两个partition中产生这一层的对应项目的partition
+	//从上一层中指定的两个partition中产生这一层的对应项目的partition，简化了partition的计算
 	public List<List<Integer>> CalculatePartition(List<List<Integer>> p1,List<List<Integer>> p2)
 	{
-		Map<Integer,List<Integer>> S = new HashMap<>();
-		Map<Integer,Integer> T = new HashMap<>();
+		//Map<Integer,Integer> T = new HashMap<>();
+		int[] T = new int[relation.length];
+		for (int i = 0; i< relation.length;i++)
+		{
+			T[i]=-1;
+		}
+		//Map<Integer,List<Integer>> S = new HashMap<>();
+
+		//int[][] S = new [p1.size()][relation.length]
+
 		List<List<Integer>> newPartition = new ArrayList<>();
+
 		for (int i = 0; i < p1.size();i++)
 		{
 			for (int t : p1.get(i))
 			{
-				T.put(t,i);
-				List<Integer> newList = new ArrayList<>();
-				S.put(i,newList);
+				//T.put(t,i);
+				T[t]=i;
 			}
+
 		}
+		//int[][] S = new int[p1.size()][relation.length];
+		//for (int m=0; m<p1.size();m++)
+		//{
+		//	for (int n = 0; n<relation.length;n++)
+		//	{
+		//		S[m][n] = -1;
+		//	}
+		//}
 
 		for (int i = 0; i < p2.size();i++)
 		{
+			List<List<Integer>> S = new ArrayList<>();
+			for (int j = 0; j < p1.size();j++)
+			{
+				List<Integer> newList = new ArrayList<>();
+				S.add(newList);
+
+			}
+
 			for (int t : p2.get(i))
 			{
-				if (T.containsKey(t))
+				if (T[t]>=0)
 				{
-					S.get(T.get(t)).add(t);
+					S.get(T[t]).add(t);
 				}
 			}
 
 			for (int t : p2.get(i))
 			{
-				if (T.containsKey(t))
+				if (T[t]>=0&&S.get(T[t]).size()>0)
 				{
-					//S.get(T.get(t)).add(t);
-					newPartition.add(S.get(T.get(t)));
+					List<Integer> newList = new ArrayList<>();
+					for (int in : S.get(T[t]))
+					{
+						newList.add(in);
+					}
+					newPartition.add(newList);
 				}
-				S.get(T.get(t)).clear();
+				S.get(T[t]).clear();
 			}
+
+			//for (int t : p2.get(i))
+			//{
+			//	if (T[t]>=0)
+			//	{
+			//		S[T[t]][t] = t;
+			//	}
+			//}
+			//for (int t : p2.get(i))
+			//{
+			//	if (T[t]>=0)
+			//	{
+			//
+			//		List<Integer> newList = new ArrayList<>();
+			//		for (int p = 0; p<relation.length;p++)
+			//		{
+			//			if (S[T[t]][p]>=0)
+			//			{
+			//				newList.add(p);
+			//			}
+			//		}
+			//		if (newList.size()>0)
+			//			newPartition.add(newList);
+			//	}
+			//	for (int p = 0; p<relation.length;p++)
+			//	{
+			//		S[T[t]][p]=-1;
+			//
+			//	}
+			//}
 		}
+		//T.clear();
+		//for (List<Integer> l : S)
+		//{
+		//	l.clear();
+		//}
+		//S.clear();
+
 		return newPartition;
 	}
 
+	//用于在生成下一层级时合并attribute组合
 	public String mergeString(String s1,String s2)
 	{
 		String result;
@@ -144,35 +236,47 @@ public class FDMine
 		return rst;
 	}
 
-	public List<Object[]> GenerateNextLevel(List<Object[]> Ckm)
+	//生成下一层级
+	public HashMap<String,Object[]> GenerateNextLevel(HashMap<String,Object[]> Ckm)
 	{
-		List<Object[]> Ck = new ArrayList<>();
+		HashMap<String,Object[]> Ck = new HashMap<>();
 		Set<String> newXs = new HashSet<>();
 
-		for (int i = 0; i <Ckm.size()-1;i++)
+		Iterator<Map.Entry<String,Object[]>> iterator1 = Ckm.entrySet().iterator();
+		int counter = 1;
+		while (iterator1.hasNext())
 		{
-			for (int j = i+1; j<Ckm.size();j++)
+			Iterator<Map.Entry<String,Object[]>> iterator2 = Ckm.entrySet().iterator();
+			for (int i = 0; i<counter;i++)
 			{
-				String newX = mergeString((String)(Ckm.get(i)[0]),(String)Ckm.get(j)[0]);
-				if (newX.length() == ((String)(Ckm.get(i)[0])).length()+1 && !newXs.contains(newX))
+				iterator2.next();
+			}
+			Map.Entry<String,Object[]> entry1 = iterator1.next();
+			while (iterator2.hasNext())
+			{
+				Map.Entry<String,Object[]> entry2 = iterator2.next();
+				String newX = mergeString(entry1.getKey(),entry2.getKey());
+				if (newX.length() == (entry1.getKey()).length()+1 && !newXs.contains(newX))
 				{
-					Object[] objects = new Object[3];
+					Object[] objects = new Object[2];
 
 
-					objects[0] = newX;
-					objects[1] = InitializeClosure(newX);
-					objects[2] = CalculatePartition((List<List<Integer>>)(Ckm.get(i)[2]),(List<List<Integer>>)Ckm.get(j)[2]);
-					Ck.add(objects);
+					objects[0] = InitializeClosure(newX);
+					objects[1] = CalculatePartition((List<List<Integer>>)(entry1.getValue()[1]),(List<List<Integer>>)entry2.getValue()[1]);
+					Ck.put(newX,objects);
 
 					newXs.add(newX);
 				}
 			}
+
+			counter+=1;
 		}
 
 		return Ck;
 
 	}
 
+	//初始化闭包
 	public Set<Character> InitializeClosure(String X)
 	{
 
@@ -184,18 +288,401 @@ public class FDMine
 		return closure;
 	}
 
-
-	public void ObtainFDs(List<Object[]> Ck,List<Object[]> Ckm)
+	//计算U-{X}
+	public List<Character> UMinusX(Set<Character> X)
 	{
+		List<Character> result = new ArrayList<>();
+		for (char ch : U)
+		{
+			if (!X.contains(ch))
+			{
+				result.add(ch);
+			}
+		}
 
+		return result;
 	}
-	public void ObtainEquivalences()
-	{
 
+	//获取Ckm层的functional dependency
+	public void ObtainFDs(HashMap<String,Object[]> Ck,HashMap<String,Object[]> Ckm)
+	{
+		Iterator<Map.Entry<String,Object[]>> iterator = Ckm.entrySet().iterator();
+		List<String[]> thisF = new ArrayList<>();
+		while (iterator.hasNext())
+		{
+			Map.Entry<String,Object[]> entry = iterator.next();
+			List<Character> umx = UMinusX((Set<Character>)entry.getValue()[0]);
+			for (char ch : umx)
+			{
+				String merged = mergeString(entry.getKey(),String.valueOf(ch));
+				if (Ck.containsKey(merged))
+				{
+					if (((List<List<Integer>>)entry.getValue()[1]).size() ==
+							((List<List<Integer>>)Ck.get(merged)[1]).size())
+					{
+						((Set<Character>)entry.getValue()[0]).add(ch);
+						String[] newF = new String[2];
+						newF[0] = entry.getKey();
+						newF[1] = String.valueOf(ch);
+						thisF.add(newF);
+					}
+				}
+
+			}
+		}
+		for (String[] fItem : thisF)
+		{
+			F.add(fItem);
+			if (!FClosure.containsKey(fItem[0]))
+			{
+				FClosure.put(fItem[0],(Set<Character>)Ckm.get(fItem[0])[0]);
+			}
+		}
 	}
 
-	public void Prune()
+	//判断A是否为B的子集
+	public boolean judgeABelongsToB(String A, Set<Character> B)
+	{
+		for (int i = 0;i<A.length();i++)
+		{
+			if (!B.contains(A.charAt(i)))
+				return false;
+		}
+		return true;
+	}
+
+	//判断闭包是否为B的子集
+	public boolean judgeClosureBelongsToString(Set<Character> A, String B)
+	{
+		for (char ch : A)
+		{
+			if (B.indexOf(ch)<0)
+				return false;
+		}
+		return true;
+	}
+
+	//获取等价类，用以修剪
+	public void ObtainEquivalences(HashMap<String,Object[]> Ckm)
+	{
+		Iterator<Map.Entry<String,Object[]>> iterator = Ckm.entrySet().iterator();
+		while (iterator.hasNext())
+		{
+			Map.Entry<String,Object[]> entry = iterator.next();
+			for (String[] f : F)
+			{
+				if(judgeABelongsToB(entry.getKey(),FClosure.get(f[0]))&&
+						judgeABelongsToB(f[0],(Set<Character> )entry.getValue()[0]))
+				{
+					String[] newE = new String[2];
+					newE[0] = entry.getKey();
+					newE[1] = f[0];
+					if (!newE[0].equals(newE[1]))
+					{
+						//E.add(newE);
+						if (!E.contains(newE[1]+","+newE[0]))
+						{
+							E.add(newE[0]+","+newE[1]);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	//判断a是否是b的真子集
+	public boolean judgeAReallyBelongsToB(String a, String b)
+	{
+		if (a.length()<=0)
+			return false;
+		if (a.length()<b.length())
+		{
+			for (int i = 0; i < a.length(); i++)
+			{
+				if (b.indexOf(a.charAt(i))<0)
+					return false;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	//判断等价类中是否包含X
+	public boolean judgeEContainsX(String X)
 	{
 
+		for (String it : E)
+		{
+			String[] its = it.split(",");
+			if (its[1].equals(X))
+				return true;
+		}
+		return false;
+	}
+
+	//获取非平凡闭包
+	public String getNontrivialClosure(Set<Character> closure,String X)
+	{
+		char[] nClo = new char[closure.size() - X.length()];
+		int count = 0;
+		for (Character ch : closure)
+		{
+			if (X.indexOf(ch)<0)
+			{
+				nClo[count++] = ch;
+			}
+		}
+		Arrays.sort(nClo);
+		String result = new String(nClo);
+		return result;
+	}
+
+	//判断闭包与属性集是否构成全集的互补关系
+	public boolean judgeComplementary(Set<Character> SClosure,String xnc)
+	{
+		for(int i =0 ; i<xnc.length();i++)
+		{
+			SClosure.add(xnc.charAt(i));
+		}
+		return SClosure.size() == U.length;
+	}
+
+	//合并两个closure
+	public Set<Character> mergeClosure(Set<Character> s,String x)
+	{
+		Set<Character> result= new HashSet<>();
+		for (char ch :s)
+		{
+			result.add(ch);
+		}
+		for (int i = 0; i<x.length();i++)
+		{
+			result.add(x.charAt(i));
+		}
+
+		return result;
+	}
+
+	//修剪Ck层
+	public HashMap<String,Object[]> Prune(HashMap<String,Object[]> Ck,HashMap<String,Object[]> Ckm)
+	{
+		Iterator<Map.Entry<String,Object[]>> KIterator = Ck.entrySet().iterator();
+		while (KIterator.hasNext())
+		{
+			Map.Entry<String,Object[]> KEntry = KIterator.next();
+			String S = KEntry.getKey();
+			Iterator<Map.Entry<String,Object[]>> MIterator = Ckm.entrySet().iterator();
+			boolean stop = false;
+			while (MIterator.hasNext()&&!stop)
+			{
+				Map.Entry<String,Object[]> MEntry = MIterator.next();
+				String X = MEntry.getKey();
+
+				if (judgeAReallyBelongsToB(X,S))
+				{
+					//prune rule 1
+					if (judgeEContainsX(X))
+					{
+						//Ck.remove(KEntry.getKey());
+						KIterator.remove();
+						stop = true;
+					}
+					//prune rule 2
+					//else if (judgeClosureBelongsToString((Set<Character>)MEntry.getValue()[0],S))
+					else if (judgeAReallyBelongsToB(getNontrivialClosure((Set<Character>)MEntry.getValue()[0],X),S))
+					{
+						//Ck.remove(KEntry.getKey());
+						KIterator.remove();
+						stop = true;
+
+					}
+
+					if (!stop)
+					{
+						//prune rule 3
+						KEntry.getValue()[0] = mergeClosure((Set<Character>)KEntry.getValue()[0],getNontrivialClosure((Set<Character>)MEntry.getValue()[0],X));
+						//prune rule 4
+						if (((Set<Character>)KEntry.getValue()[0]).size() == U.length)
+						{
+							KIterator.remove();
+							stop = true;
+						}
+					}
+					//else if (judgeComplementary(((Set<Character>)KEntry.getValue()[0]),getNontrivialClosure((Set<Character>)MEntry.getValue()[0],X)))
+					//{
+					//	//Ck.remove(KEntry.getKey());
+					//	KIterator.remove();
+					//	stop = true;
+					//}
+				}
+			}
+		}
+		return Ck;
+	}
+
+	//控制台打印
+	public void ShowF()
+	{
+		SortF();
+		for (int i = 0; i < F.size();i++)
+		{
+			System.out.println(TransformAttributeForm(F.get(i)[0])+ " -> " + TransformAttributeForm(F.get(i)[1]));
+		}
+	}
+	//将字母属性列转换为数字
+	public String TransformAttributeForm(String str)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+
+		char[] chars = str.toCharArray();
+		Arrays.sort(chars);
+		int i = 0;
+		for (; i<chars.length-1;i++)
+		{
+			stringBuilder.append(chars[i]-'A'+1);
+			stringBuilder.append(" ");
+		}
+		stringBuilder.append(chars[i]-'A'+1);
+		return stringBuilder.toString();
+	}
+
+	//按照字典序排列
+	public void SortF()
+	{
+		Comparator c = new Comparator<String[]>() {
+			@Override
+			public int compare(String[] o1, String[] o2) {
+				if(o1[0].compareTo(o2[0])<0)
+					return -1;
+				else if(o1[0].compareTo(o2[0])==0)
+				{
+					if(o1[1].compareTo(o2[1])<=0)
+						return -1;
+					else return 1;
+				}
+				else return 1;
+			}
+		};
+		Collections.sort(F,c);
+	}
+	public List<String[]> SortStringList(List<String[]> strList)
+	{
+		Comparator c = new Comparator<String[]>() {
+			@Override
+			public int compare(String[] o1, String[] o2) {
+				if(o1[0].compareTo(o2[0])<0)
+					return -1;
+				else if(o1[0].compareTo(o2[0])==0)
+				{
+					if(o1[1].compareTo(o2[1])<=0)
+						return -1;
+					else return 1;
+				}
+				else return 1;
+			}
+		};
+		Collections.sort(strList,c);
+		return strList;
+	}
+
+	//将函数依赖存于文件中
+	public void StoreIntoFile() throws IOException
+	{
+		String mid;
+		if (prune)
+		{
+			mid = "pruned";
+		}
+		else {
+			mid = "unpruned";
+		}
+        File writeName = new File("data"+File.separator+"result"+File.separator+"final_result_"+mid+".txt");
+        writeName.createNewFile();
+        BufferedWriter out = new BufferedWriter(new FileWriter(writeName));
+
+		for (int i = 0; i < F.size();i++)
+		{
+			out.write(TransformAttributeForm(F.get(i)[0])+ " -> " + TransformAttributeForm(F.get(i)[1])+'\n');
+		}
+
+        out.flush();
+        out.close();
+	}
+
+	public void StoreDivideIntoFile(int mid) throws IOException
+	{
+
+		File writeName = new File("data"+File.separator+"merged"+File.separator+"result_"+String.valueOf(mid)+".txt");
+		writeName.createNewFile();
+		BufferedWriter out = new BufferedWriter(new FileWriter(writeName));
+
+		for (int i = 0; i < F.size();i++)
+		{
+			out.write(TransformAttributeForm(F.get(i)[0])+ " -> " + TransformAttributeForm(F.get(i)[1])+'\n');
+		}
+
+		out.flush();
+		out.close();
+	}
+
+	// getters and setters
+	public String[][] getRelation()
+	{
+		return relation;
+	}
+
+	public void setRelation(String[][] relation)
+	{
+		this.relation = relation;
+	}
+
+	public char[] getU()
+	{
+		return U;
+	}
+
+	public void setU(char[] u)
+	{
+		U = u;
+	}
+
+	public List<String[]> getF()
+	{
+		return F;
+	}
+
+	public void setF(List<String[]> f)
+	{
+		F = f;
+	}
+
+	public Set<String> getE()
+	{
+		return E;
+	}
+
+	public void setE(Set<String> e)
+	{
+		E = e;
+	}
+
+	public HashMap<String, Set<Character>> getFClosure()
+	{
+		return FClosure;
+	}
+
+	public void setFClosure(HashMap<String, Set<Character>> FClosure)
+	{
+		this.FClosure = FClosure;
+	}
+
+	public boolean isPrune()
+	{
+		return prune;
+	}
+
+	public void setPrune(boolean prune)
+	{
+		this.prune = prune;
 	}
 }
