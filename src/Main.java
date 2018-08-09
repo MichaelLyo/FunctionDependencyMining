@@ -37,9 +37,7 @@ public class Main {
                 line = br.readLine();
             }
 
-            /** 整体计算
-             *
-             */
+
             String[][] newRelation  = new String[relation.size()][columnNum];
             for (int i = 0; i<relation.size();i++)
             {
@@ -62,70 +60,11 @@ public class Main {
             fdMine.ShowF();
             //存入文件
             fdMine.StoreIntoFile();
-//
-//            List<String[]> result = new ArrayList<>();
-//            Set<String> strSet = new HashSet<>();
-//
-//            int divideNum = 50;
-//
-//            for (int j = 0; j <divideNum;j++)
-//            {
-//                System.out.println("前"+String.valueOf(j)+"part数据");
-//                String[][] newRelation  = new String[relation.size()/divideNum][columnNum];
-//                for (int i = j*(relation.size()/divideNum); i<(j+1)*(relation.size()/divideNum);i++)
-//                {
-//                    newRelation[i-j*(relation.size()/divideNum)] = relation.get(i);
-//                }
-//                FDMine fdMine = new FDMine(newRelation,U);
-//
-//                /**
-//                 ** 选择是否修剪函数依赖
-//                 * 修剪会极大提升算法性能，同时过滤掉因为等价等原因造成的重复、无意义的函数依赖
-//                 * 不修剪可以提供直观的所有函数依赖的计算
-//                 * 当数据量很大时强烈建议设置修剪为true
-//                 **/
-//                fdMine.setPrune(true);
-//
-//                fdMine.runAlgorithm();
-//                fdMine.SortF();
-//                //fdMine.ShowF();
-//                //fdMine.StoreIntoFile();
-//                fdMine.StoreDivideIntoFile(j);
-//                List<String[]> res = fdMine.getF();
-//                for (String[] strings : res)
-//                {
-//                    strSet.add(strings[0]+","+strings[1]);
-//                }
-//                System.out.println("\n\n\n");
-//            }
-//
-//            for (String s:strSet)
-//            {
-//                String[] newStr = s.split(",");
-//                result.add(newStr);
-//            }
-//            StoreTotalIntoFile(result);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
     }
-    public static void StoreTotalIntoFile( List<String[]> F) throws IOException
-    {
 
-        File writeName = new File("data"+File.separator+"merged"+File.separator+"result_total.txt");
-        writeName.createNewFile();
-        BufferedWriter out = new BufferedWriter(new FileWriter(writeName));
-        FDMine fdMine = new FDMine();
-        F = fdMine.SortStringList(F);
-
-        for (int i = 0; i < F.size();i++)
-        {
-            out.write(fdMine.TransformAttributeForm(F.get(i)[0])+ " -> " + fdMine.TransformAttributeForm(F.get(i)[1])+'\n');
-        }
-
-        out.flush();
-        out.close();
-    }
 }

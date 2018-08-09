@@ -123,13 +123,6 @@ public class FDMine
 			}
 		}
 		//stripped partition
-//		for (int i=0;i<partition.size();i++)
-//		{
-//			if (partition.get(i).size()<=1)
-//			{
-//				partition.remove(i);
-//			}
-//		}
 		Iterator<List<Integer>> iter = partition.iterator();
 		while (iter.hasNext()) {
 			List<Integer> item = iter.next();
@@ -150,9 +143,7 @@ public class FDMine
 		{
 			T[i]=-1;
 		}
-		//Map<Integer,List<Integer>> S = new HashMap<>();
 
-		//int[][] S = new [p1.size()][relation.length]
 
 		List<List<Integer>> newPartition = new ArrayList<>();
 		List<List<Integer>> S = new ArrayList<>();
@@ -168,15 +159,6 @@ public class FDMine
 
 		}
 
-
-		//int[][] S = new int[p1.size()][relation.length];
-		//for (int m=0; m<p1.size();m++)
-		//{
-		//	for (int n = 0; n<relation.length;n++)
-		//	{
-		//		S[m][n] = -1;
-		//	}
-		//}
 
 		for (int i = 0; i < p2.size();i++)
 		{
@@ -211,42 +193,8 @@ public class FDMine
 
 			}
 
-			//for (int t : p2.get(i))
-			//{
-			//	if (T[t]>=0)
-			//	{
-			//		S[T[t]][t] = t;
-			//	}
-			//}
-			//for (int t : p2.get(i))
-			//{
-			//	if (T[t]>=0)
-			//	{
-			//
-			//		List<Integer> newList = new ArrayList<>();
-			//		for (int p = 0; p<relation.length;p++)
-			//		{
-			//			if (S[T[t]][p]>=0)
-			//			{
-			//				newList.add(p);
-			//			}
-			//		}
-			//		if (newList.size()>0)
-			//			newPartition.add(newList);
-			//	}
-			//	for (int p = 0; p<relation.length;p++)
-			//	{
-			//		S[T[t]][p]=-1;
-			//
-			//	}
-			//}
 		}
-		//T.clear();
-		//for (List<Integer> l : S)
-		//{
-		//	l.clear();
-		//}
-		//S.clear();
+
 
 		return newPartition;
 	}
@@ -279,28 +227,6 @@ public class FDMine
 
 		Iterator<Map.Entry<String,Object[]>> iterator1 = Ckm.entrySet().iterator();
 		int counter = 1;
-//		List<String> keyList = new ArrayList<String>(Ckm.keySet());
-//		for (int m=0;m<keyList.size();m++)
-//		{
-//			for (int n = m+1;n<keyList.size();n++)
-//			{
-//				String newX = mergeString(keyList.get(m),keyList.get(n));
-//				if (newX.length() == (keyList.get(m)).length()+1 && !newXs.contains(newX))
-//				{
-//					Object[] objects = new Object[2];
-////					System.out.println(newX);
-//					objects[0] = InitializeClosure(newX);
-//					long time2=System.currentTimeMillis();
-//
-//					objects[1] = CalculatePartition((List<List<Integer>>)(Ckm.get(keyList.get(m))[1]),(List<List<Integer>>)(Ckm.get(keyList.get(m))[1]));
-//					long time3=System.currentTimeMillis();
-////					System.out.println("CalculatePartition： "+(time3-time2)+"ms");
-//					Ck.put(newX,objects);
-//
-//					newXs.add(newX);
-//				}
-//			}
-//		}
 
 		while (iterator1.hasNext())
 		{
@@ -584,6 +510,8 @@ public class FDMine
 	//控制台打印
 	public void ShowF()
 	{
+		System.out.println("\n\nFunctional Dependency Mining Result:");
+
 		SortF();
 		for (int i = 0; i < F.size();i++)
 		{
@@ -626,25 +554,7 @@ public class FDMine
 		};
 		Collections.sort(F,c);
 	}
-	public List<String[]> SortStringList(List<String[]> strList)
-	{
-		Comparator c = new Comparator<String[]>() {
-			@Override
-			public int compare(String[] o1, String[] o2) {
-				if(o1[0].compareTo(o2[0])<0)
-					return -1;
-				else if(o1[0].compareTo(o2[0])==0)
-				{
-					if(o1[1].compareTo(o2[1])<=0)
-						return -1;
-					else return 1;
-				}
-				else return 1;
-			}
-		};
-		Collections.sort(strList,c);
-		return strList;
-	}
+
 
 	//将函数依赖存于文件中
 	public void StoreIntoFile() throws IOException
@@ -657,7 +567,7 @@ public class FDMine
 		else {
 			mid = "unpruned";
 		}
-        File writeName = new File("data"+File.separator+"result"+File.separator+"final_result_"+mid+".txt");
+        File writeName = new File("data"+File.separator+"result"+File.separator+"result_"+mid+".txt");
         writeName.createNewFile();
         BufferedWriter out = new BufferedWriter(new FileWriter(writeName));
 
