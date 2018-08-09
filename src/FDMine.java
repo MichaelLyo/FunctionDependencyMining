@@ -53,6 +53,8 @@ public class FDMine
 		HashMap<String,Object[]> Ck ;
 		HashMap<String,Object[]> Ckm = new HashMap<>();
 
+		long time1=System.currentTimeMillis();   //获取开始时间
+
 		for (char c :U)
 		{
 			Object[] objects = new Object[2];
@@ -62,19 +64,34 @@ public class FDMine
 			objects[1] = InitializePartition(c);
 			Ckm.put(ch,objects);
 		}
-
+		long time2=System.currentTimeMillis(); //获取结束时间
+		System.out.println("init time： "+(time2-time1)+"ms");
+		int k = 1;
 		while (Ckm.size()>0)
 		{
+			System.out.println("第"+String.valueOf(k)+"层");
 			Ck = GenerateNextLevel(Ckm);
+			long time3=System.currentTimeMillis(); //获取结束时间
+			System.out.println("GenerateNextLevel： "+(time3-time2)+"ms");
+
 			ObtainFDs(Ck,Ckm);
+			long time4=System.currentTimeMillis(); //获取结束时间
+			System.out.println("ObtainFDs： "+(time4-time3)+"ms");
+
 			ObtainEquivalences(Ckm);
+			long time5=System.currentTimeMillis(); //获取结束时间
+			System.out.println("ObtainEquivalences： "+(time5-time4)+"ms");
+
 			//根据需要是否修剪
 			if (prune)
 			{
 				Ck = Prune(Ck,Ckm);
+				long time6=System.currentTimeMillis(); //获取结束时间
+				System.out.println("Prune： "+(time6-time5)+"ms");
 			}
 
 			Ckm = Ck;
+			k++;
 		}
 
 
@@ -105,8 +122,21 @@ public class FDMine
 				it++;
 			}
 		}
-
-
+		//stripped partition
+//		for (int i=0;i<partition.size();i++)
+//		{
+//			if (partition.get(i).size()<=1)
+//			{
+//				partition.remove(i);
+//			}
+//		}
+		Iterator<List<Integer>> iter = partition.iterator();
+		while (iter.hasNext()) {
+			List<Integer> item = iter.next();
+			if (item.size()<=1) {
+				iter.remove();
+			}
+		}
 		return partition;
 	}
 
@@ -115,8 +145,8 @@ public class FDMine
 	public List<List<Integer>> CalculatePartition(List<List<Integer>> p1,List<List<Integer>> p2)
 	{
 		//Map<Integer,Integer> T = new HashMap<>();
-		int[] T = new int[relation.length];
-		for (int i = 0; i< relation.length;i++)
+		int[] T = new int[relation.length+1];
+		for (int i = 0; i< relation.length+1;i++)
 		{
 			T[i]=-1;
 		}
@@ -125,7 +155,7 @@ public class FDMine
 		//int[][] S = new [p1.size()][relation.length]
 
 		List<List<Integer>> newPartition = new ArrayList<>();
-
+		List<List<Integer>> S = new ArrayList<>();
 		for (int i = 0; i < p1.size();i++)
 		{
 			for (int t : p1.get(i))
@@ -133,8 +163,12 @@ public class FDMine
 				//T.put(t,i);
 				T[t]=i;
 			}
+			List<Integer> newList = new ArrayList<>();
+			S.add(newList);
 
 		}
+
+
 		//int[][] S = new int[p1.size()][relation.length];
 		//for (int m=0; m<p1.size();m++)
 		//{
@@ -146,13 +180,7 @@ public class FDMine
 
 		for (int i = 0; i < p2.size();i++)
 		{
-			List<List<Integer>> S = new ArrayList<>();
-			for (int j = 0; j < p1.size();j++)
-			{
-				List<Integer> newList = new ArrayList<>();
-				S.add(newList);
 
-			}
 
 			for (int t : p2.get(i))
 			{
@@ -164,16 +192,23 @@ public class FDMine
 
 			for (int t : p2.get(i))
 			{
-				if (T[t]>=0&&S.get(T[t]).size()>0)
+			    //stripped partition
+				if (T[t]>=0)
 				{
-					List<Integer> newList = new ArrayList<>();
-					for (int in : S.get(T[t]))
+					if(S.get(T[t]).size()>1)
 					{
-						newList.add(in);
+						List<Integer> newList = new ArrayList<>();
+						for (int in : S.get(T[t]))
+						{
+							newList.add(in);
+						}
+						newPartition.add(newList);
 					}
-					newPartition.add(newList);
+
+					S.get(T[t]).clear();
 				}
-				S.get(T[t]).clear();
+
+
 			}
 
 			//for (int t : p2.get(i))
@@ -244,6 +279,29 @@ public class FDMine
 
 		Iterator<Map.Entry<String,Object[]>> iterator1 = Ckm.entrySet().iterator();
 		int counter = 1;
+//		List<String> keyList = new ArrayList<String>(Ckm.keySet());
+//		for (int m=0;m<keyList.size();m++)
+//		{
+//			for (int n = m+1;n<keyList.size();n++)
+//			{
+//				String newX = mergeString(keyList.get(m),keyList.get(n));
+//				if (newX.length() == (keyList.get(m)).length()+1 && !newXs.contains(newX))
+//				{
+//					Object[] objects = new Object[2];
+////					System.out.println(newX);
+//					objects[0] = InitializeClosure(newX);
+//					long time2=System.currentTimeMillis();
+//
+//					objects[1] = CalculatePartition((List<List<Integer>>)(Ckm.get(keyList.get(m))[1]),(List<List<Integer>>)(Ckm.get(keyList.get(m))[1]));
+//					long time3=System.currentTimeMillis();
+////					System.out.println("CalculatePartition： "+(time3-time2)+"ms");
+//					Ck.put(newX,objects);
+//
+//					newXs.add(newX);
+//				}
+//			}
+//		}
+
 		while (iterator1.hasNext())
 		{
 			Iterator<Map.Entry<String,Object[]>> iterator2 = Ckm.entrySet().iterator();
@@ -259,10 +317,13 @@ public class FDMine
 				if (newX.length() == (entry1.getKey()).length()+1 && !newXs.contains(newX))
 				{
 					Object[] objects = new Object[2];
+//					System.out.println(newX);
+                    objects[0] = InitializeClosure(newX);
+                    long time2=System.currentTimeMillis();
 
-
-					objects[0] = InitializeClosure(newX);
 					objects[1] = CalculatePartition((List<List<Integer>>)(entry1.getValue()[1]),(List<List<Integer>>)entry2.getValue()[1]);
+                    long time3=System.currentTimeMillis();
+//                    System.out.println("CalculatePartition： "+(time3-time2)+"ms");
 					Ck.put(newX,objects);
 
 					newXs.add(newX);
