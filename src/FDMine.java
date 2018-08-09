@@ -66,13 +66,14 @@ public class FDMine
 		}
 		long time2=System.currentTimeMillis(); //获取结束时间
 		System.out.println("init time： "+(time2-time1)+"ms");
+		long time6 = time2;
 		int k = 1;
 		while (Ckm.size()>0)
 		{
 			System.out.println("第"+String.valueOf(k)+"层");
 			Ck = GenerateNextLevel(Ckm);
 			long time3=System.currentTimeMillis(); //获取结束时间
-			System.out.println("GenerateNextLevel： "+(time3-time2)+"ms");
+			System.out.println("GenerateNextLevel： "+(time3-time6)+"ms");
 
 			ObtainFDs(Ck,Ckm);
 			long time4=System.currentTimeMillis(); //获取结束时间
@@ -86,7 +87,7 @@ public class FDMine
 			if (prune)
 			{
 				Ck = Prune(Ck,Ckm);
-				long time6=System.currentTimeMillis(); //获取结束时间
+				time6=System.currentTimeMillis(); //获取结束时间
 				System.out.println("Prune： "+(time6-time5)+"ms");
 			}
 
